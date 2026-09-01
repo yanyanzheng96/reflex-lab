@@ -1,0 +1,99 @@
+/* REFLEX LAB — experiment log, dark space theme */
+:root {
+  --bg: #0b0d12;
+  --panel: #131722;
+  --panel2: #1a2030;
+  --ink: #e8eaf0;
+  --dim: #9aa3b5;
+  --accent: #dc732d;
+  --accent2: #e9a06a;
+  --line: #262e42;
+  --good: #7dc98f;
+  --bad: #e07a7a;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  line-height: 1.75;
+}
+a { color: var(--accent2); text-decoration: none; }
+a:hover { color: var(--accent); }
+.wrap { max-width: 980px; margin: 0 auto; padding: 0 20px 80px; }
+header.site {
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #10141d, var(--bg));
+  margin-bottom: 36px;
+}
+header.site .wrap { padding: 26px 20px 18px; }
+header.site h1 { margin: 0; font-size: 1.5rem; letter-spacing: 0.06em; }
+header.site h1 a { color: var(--ink); }
+header.site h1 .orange { color: var(--accent); }
+header.site p.sub { margin: 4px 0 0; color: var(--dim); font-size: 0.92rem; }
+h1.title { font-size: 1.7rem; margin: 0 0 4px; }
+p.meta { color: var(--dim); font-size: 0.9rem; margin: 0 0 28px; }
+p.meta .tag {
+  display: inline-block; border: 1px solid var(--line); border-radius: 4px;
+  padding: 0 8px; margin-right: 6px; background: var(--panel);
+  font-size: 0.82rem; color: var(--accent2);
+}
+h2 { font-size: 1.25rem; margin: 40px 0 12px; color: var(--accent2); }
+h3 { font-size: 1.05rem; margin: 26px 0 8px; }
+figure { margin: 18px 0; }
+figure img, figure video {
+  width: 100%; border-radius: 8px; border: 1px solid var(--line);
+  display: block; background: #000;
+}
+figcaption { color: var(--dim); font-size: 0.86rem; margin-top: 6px; }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
+@media (max-width: 700px) { .grid2, .grid3 { grid-template-columns: 1fr; } }
+.card {
+  background: var(--panel); border: 1px solid var(--line);
+  border-radius: 10px; padding: 18px 20px; margin: 16px 0;
+}
+.card.warn { border-left: 3px solid var(--bad); }
+.card.law { border-left: 3px solid var(--accent); }
+.card h3 { margin-top: 0; }
+table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 0.92rem; }
+th, td { border: 1px solid var(--line); padding: 7px 11px; text-align: left; }
+th { background: var(--panel2); color: var(--accent2); font-weight: 600; }
+tr:nth-child(even) td { background: var(--panel); }
+code, pre {
+  font-family: Consolas, "Cascadia Mono", monospace;
+  background: var(--panel2); border-radius: 5px;
+}
+code { padding: 1px 6px; font-size: 0.88em; color: var(--accent2); }
+pre {
+  padding: 14px 16px; overflow-x: auto; border: 1px solid var(--line);
+  font-size: 0.84rem; line-height: 1.55;
+}
+pre code { background: none; padding: 0; color: var(--ink); }
+blockquote {
+  margin: 14px 0; padding: 10px 18px; border-left: 3px solid var(--accent);
+  background: var(--panel); color: var(--dim); border-radius: 0 8px 8px 0;
+}
+.entry-card {
+  display: block; background: var(--panel); border: 1px solid var(--line);
+  border-radius: 12px; padding: 20px 24px; margin: 18px 0;
+  transition: border-color 0.15s, transform 0.15s;
+}
+.entry-card:hover { border-color: var(--accent); transform: translateY(-2px); }
+.entry-card h2 { margin: 0 0 6px; color: var(--ink); font-size: 1.2rem; }
+.entry-card .num { color: var(--accent); font-family: Consolas, monospace; margin-right: 10px; }
+.entry-card p { margin: 4px 0 0; color: var(--dim); font-size: 0.93rem; }
+.entry-card .date { font-size: 0.82rem; color: var(--dim); float: right; }
+footer {
+  margin-top: 60px; padding-top: 18px; border-top: 1px solid var(--line);
+  color: var(--dim); font-size: 0.85rem;
+}
+.nav-back { font-size: 0.9rem; display: inline-block; margin-bottom: 18px; }
+.kpi { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 18px 0; }
+.kpi .box {
+  background: var(--panel); border: 1px solid var(--line); border-radius: 10px;
+  padding: 12px 16px; text-align: center;
+}
+.kpi .box .v { font-size: 1.45rem; color: var(--accent); font-weight: 700; font-family: Consolas, monospace; }
+.kpi .box .k { font-size: 0.82rem; color: var(--dim); margin-top: 2px; }

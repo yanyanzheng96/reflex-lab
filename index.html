@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>REFLEX LAB — 实验记录</title>
+<link rel="stylesheet" href="assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛰️</text></svg>">
+</head>
+<body>
+<header class="site">
+  <div class="wrap">
+    <h1><a href="index.html">REFLEX <span class="orange">LAB</span></a></h1>
+    <p class="sub">运行时改造的 UE6 游戏 × 生成式视频 · 数据合成与代码即控制(codectl)实验记录</p>
+  </div>
+</header>
+<div class="wrap">
+
+<p>一个在 UE6 里<strong>边跑边改</strong>的第一人称射击游戏(纯 Python WebSocket 桥,不开编辑器、不编译 C++),被改造成
+<strong>Unreal2Bridge 训练数据合成管线</strong>:游戏渲染 episode → 商业图像/视频编辑 API 做风格化 →
+逆向重建闭环验证。这里按时间记录每一次实验:做了什么、量到了什么、踩了什么坑。</p>
+
+<a class="entry-card" href="entries/01-episode-pipeline.html">
+  <span class="date">2026-08-31</span>
+  <h2><span class="num">01</span>自动驾驶 Episode 数据合成管线</h2>
+  <p>自控轨迹 + 瞄准编排 + 开枪调度,全参数 episode.json 与 mp4 同帧对齐;MediaCapture 泄漏定案与修复。</p>
+</a>
+
+<a class="entry-card" href="entries/02-image-edits.html">
+  <span class="date">2026-09-01</span>
+  <h2><span class="num">02</span>商业图像编辑模型横评</h2>
+  <p>Kontext / FLUX.2 / Seedream / Nano Banana 2 / NB Pro 一图一战:构图锁定 prompt 的决定性影响,每张图的 prompt 留档。</p>
+</a>
+
+<a class="entry-card" href="entries/03-seedance-films.html">
+  <span class="date">2026-09-01</span>
+  <h2><span class="num">03</span>Seedance 参考生视频:宇宙飞艇大片</h2>
+  <p>NB2 参考图 + 游戏片段 → 电影级成片 v1/v2;几何冻结条款把"两艘船"救回"一艘",但比例漂移仍在——prompt 软约束的天花板。</p>
+</a>
+
+<a class="entry-card" href="entries/04-inverse-recon.html">
+  <span class="date">2026-09-01</span>
+  <h2><span class="num">04</span>逆向重建:从生成视频反推外形与轨迹</h2>
+  <p>calib / observe / fit 三段管线:漂移源头定案(Seedance 把几何锚在参考图上)、轨道角速度慢 33%、等效椭球拉长 2 倍。</p>
+</a>
+
+<a class="entry-card" href="entries/05-blade-fins.html">
+  <span class="date">2026-09-01</span>
+  <h2><span class="num">05</span>叶片尾鳍改造与快速迭代实验台</h2>
+  <p>方块板 → 十字后掠叶片:按参考图量出的翼型,解析求解圆锥放置;迭代循环从 6 次往返压到 1 次发送。</p>
+</a>
+
+<footer>
+  REFLEX LAB · UE6 runtime bridge (port 9102) · 数据归宿 E:\projects\Unreal2Bridge\data ·
+  由 Claude 整理,记录即证据:每个结论都有图、有数、有 manifest。
+</footer>
+</div>
+</body>
+</html>
