@@ -41,15 +41,33 @@
 </tbody>
 </table>
 
-<h2>叠加终审(用户 call:和 UE 直接 overlap)</h2>
-<figure><img src="../assets/v7r3_overlays_grid.jpg" alt="四模与UE源帧50%叠加"><figcaption>每格 = 50% UE 源帧 + 50% 编辑输出(宽度归一,无拉伸)。</figcaption></figure>
-<p><strong>Kontext 几乎单船重合</strong>——只有鼻尖、背鳍、枪身有轻微重影;其余三家都是清晰的"两艘船":比例虽然精确(Seedream/NB2 纵横比 2.43),但整体平移 150–270px 并放大 1.2–1.4 倍。
-这改写了选型:04 篇证明 Seedance 把几何锚在 @Image1 上,所以给视频环节的参考图,<em>像素级对齐</em>比<em>比例精确</em>更值钱——@Image1 应该用 Kontext 版,它的几何锚 ≈ UE 真值。</p>
+<h2>叠加终审(用户 call:和 UE 直接 overlap)——含一次公开翻案</h2>
+<figure><img src="../assets/v7r3_overlays_grid.jpg" alt="四模与UE源帧50%叠加"><figcaption>第一版:50% UE + 50% 编辑输出。</figcaption></figure>
+<div class="card warn">
+<h3>错误判读存档(引以为戒)</h3>
+<p>看这张 50/50 叠加时我最初的结论是"Kontext 几乎单船重合、其余三家两艘船"——<strong>看反了,用户当场指出</strong>。
+陷阱:Kontext 的输出色调平、对比度低,和 UE 源帧混合后重影<em>不显眼</em>;另外三家是高对比写实纹理,任何偏移都显成双边缘。
+肉眼在混合图里看到的"重影强度"测的是<em>纹理对比度</em>,不是几何偏移——仪器会说谎,50/50 混合就是会说谎的仪器。</p>
+</div>
+<figure><img src="../assets/v7r3_overlays_deep.jpg" alt="70%UE深叠加"><figcaption>用户提议的加深版:70% UE + 30% 编辑,UE 真值层压住画面,偏移无处可藏。</figcaption></figure>
+<figure><img src="../assets/v7r3_contours_v2.jpg" alt="轮廓叠加"><figcaption>终审仪器:轮廓线叠加(绿 = UE 真值轮廓,紫 = 编辑输出轮廓;分割加 UE 掩码空间门控 + 暗鼻阈值修正)。</figcaption></figure>
+<table>
+<thead><tr><th>模型</th><th>轮廓 IoU(干净版)</th><th>UE 被覆盖</th><th>编辑船在 UE 内</th></tr></thead>
+<tbody>
+<tr><td><strong>Seedream 4.0</strong></td><td><strong>0.723</strong></td><td>0.83</td><td>0.85</td></tr>
+<tr><td>Nano Banana 2</td><td>0.694</td><td>0.79</td><td>0.85</td></tr>
+<tr><td>NB Pro / Gemini</td><td>0.672</td><td>0.77</td><td>0.84</td></tr>
+<tr><td>FLUX.1 Kontext</td><td>0.517*</td><td>0.58</td><td>0.82</td></tr>
+</tbody>
+</table>
+<p>*Kontext 的暗红鼻分割仍有残缺,真实值可能略高,但其船体上抬、变瘦、鼻部前伸在轮廓图里肉眼可见,排名不受影响。
+此前基于椭圆拟合的"Kontext 位移最小"分数与第一版 IoU 均被分割污染(星云并入/暗鼻丢失),以本表为准。
+<strong>选型再次翻案:@Image1 用 Seedream</strong>——IoU 最高、比例逐位复刻、鳍/尾锥/枪保留最全,且它就是本轮最便宜的($0.03)。</p>
 
 <div class="card law">
 <h3>初步结论:大主体假设成立(方向性)</h3>
 <p>02 篇小主体时代表性漂移是线性 ×1.5+ 的放大;本轮尺寸比收敛到 0.89–1.41,且 Seedream 与 NB2 的<em>纵横比</em>做到了逐位复刻(2.43 vs 2.44)——比例信息这次真的传过去了。
-注意口径:船体/prompt/涂装与 02 不同代,单样本,分割受光晕干扰,是方向性证据不是终审。终审在下一步:拿 v7_clip + Kontext 版参考图走 Seedance,用 04 的重建管线对比新旧两代的几何保持率。</p>
+注意口径:船体/prompt/涂装与 02 不同代,单样本,分割受光晕干扰,是方向性证据不是终审。终审在下一步:拿 v7_clip + Seedream 版参考图走 Seedance,用 04 的重建管线对比新旧两代的几何保持率。</p>
 </div>
 
 <div class="card warn">
