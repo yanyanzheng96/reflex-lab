@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>02 · 商业图像编辑模型横评 — REFLEX LAB</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛰️</text></svg>">
+</head>
+<body>
+<header class="site"><div class="wrap"><h1><a href="../index.html">REFLEX <span class="orange">LAB</span></a></h1><p class="sub">运行时改造的 UE6 游戏 × 生成式视频 · 实验记录</p></div></header>
+<div class="wrap">
+<a class="nav-back" href="../index.html">← 返回目录</a>
+<h1 class="title">02 · 商业图像编辑模型横评</h1>
+<p class="meta"><span class="tag">2026-09-01</span><span class="tag">image edit</span><span class="tag">fal.ai</span><span class="tag">Gemini</span><span class="tag">prompt 工程</span></p>
+
+<h2>任务</h2>
+<p>把 01 篇产出的 episode 首帧——一张低多边形(low-poly)游戏画面——编辑成写实电影级太空场景,同时<strong>保留几何构图</strong>:飞船的形状、位置、机位、涂装,以及右下角的第一人称枪械剪影都不能动。这张编辑结果将作为 03 篇 Seedance 视频生成的参考图,所以构图保真度是第一指标,画质其次。</p>
+<figure><img src="../assets/ep0008_first_frame.jpg" alt="episode 首帧源图"><figcaption>源图:ep_0008 首帧(2–7s 片段,4:3),低多边形渲染,右下角带第一人称枪。</figcaption></figure>
+
+<div class="kpi">
+<div class="box"><div class="v">5</div><div class="k">参战模型</div></div>
+<div class="box"><div class="v">2</div><div class="k">轮次</div></div>
+<div class="box"><div class="v">$0.39</div><div class="k">一图横评总成本</div></div>
+<div class="box"><div class="v">$0.134</div><div class="k">NB Pro 单图成本</div></div>
+</div>
+
+<h2>战况总表</h2>
+<table>
+<thead><tr><th>模型</th><th>endpoint</th><th>prompt 版本</th><th>成本/图</th><th>结果一句话</th></tr></thead>
+<tbody>
+<tr><td>FLUX.1 Kontext [pro]</td><td>fal-ai/flux-pro/kontext</td><td>v1 → v2</td><td>$0.04</td><td>两轮都稳,构图服从好,写实感中规中矩</td></tr>
+<tr><td>FLUX.2 [pro] edit</td><td>fal-ai/flux-2-pro/edit</td><td>v1</td><td>$0.00</td><td>输入端内容审查连拒 5 次,出局</td></tr>
+<tr><td>Seedream 4.0 edit</td><td>fal-ai/bytedance/seedream/v4/edit</td><td>v1 → v2</td><td>$0.03</td><td>输出被裁成 1:1 方图(harness 传参问题,见下)</td></tr>
+<tr><td>Nano Banana 2 edit</td><td>fal-ai/nano-banana-2/edit</td><td>v1 → v2</td><td>$0.06</td><td>加构图锁后保真度跃升,最终胜出</td></tr>
+<tr><td>Gemini 3 Pro Image(NB Pro)</td><td>generativelanguage:gemini-3-pro-image</td><td>nbpro_v1plus</td><td>$0.134</td><td>Round 1 最佳,但 prompt 多了一句(见公平性)</td></tr>
+</tbody>
+</table>
+
+<h2>Round 1:初赛(v1 prompt)</h2>
+<div class="grid3">
+<figure><img src="../assets/edit_kontext_v1.jpg" alt="Kontext v1"><figcaption>FLUX.1 Kontext [pro] · v1</figcaption></figure>
+<figure><img src="../assets/edit_seedream_v1.jpg" alt="Seedream v1"><figcaption>Seedream 4.0 · v1(被裁成方图)</figcaption></figure>
+<figure><img src="../assets/edit_nb2_v1.jpg" alt="NB2 v1"><figcaption>Nano Banana 2 · v1</figcaption></figure>
+</div>
+<figure><img src="../assets/edit_nbpro.jpg" alt="NB Pro"><figcaption>Gemini 3 Pro Image(Nano Banana Pro)· nbpro_v1plus。Round 1 观感最好——但它的 prompt 不一样。</figcaption></figure>
+
+<h2>公平性翻车与 Round 2</h2>
+<p>Round 1 结束后用户抓出一个公平性缺陷:发给 NB Pro 的 prompt 比 fal 三家多了一句 <em>"Preserve the composition exactly."</em>——也就是说 NB Pro 的"构图保真领先"可能不是模型能力,而是 prompt 差异。于是把这句扩写成统一的 v2 构图锁定 prompt(锁构图、锁取景、锁纵横比、锁物体尺度,禁 zoom/crop/rotate),重跑 fal 三家:</p>
+<div class="grid3">
+<figure><img src="../assets/edit_kontext_v2.jpg" alt="Kontext v2"><figcaption>Kontext · v2 构图锁定</figcaption></figure>
+<figure><img src="../assets/edit_seedream_v2.jpg" alt="Seedream v2"><figcaption>Seedream 4.0 · v2(方图问题依旧,根因在我方)</figcaption></figure>
+<figure><img src="../assets/edit_nb2_v2.jpg" alt="NB2 v2"><figcaption>Nano Banana 2 · v2——加锁后保真度跃升,接近 NB Pro</figcaption></figure>
+</div>
+
+<div class="card warn">
+<h3>坑:FLUX.2 [pro] edit 输入审查,连拒 5 次</h3>
+<p>拒绝发生在<strong>输入端</strong>:内容审查器盯上了画面里的第一人称枪。<code>safety_tolerance</code> 参数只管输出,绕不过输入审查。对本管线这是硬伤——我们所有 episode 帧都带枪,所以 FLUX.2 直接出局,$0 成本换来一条结论。</p>
+</div>
+
+<div class="card warn">
+<h3>坑:Seedream 的 1:1 方图是我方 harness 的错</h3>
+<p>Seedream 4.0 edit 两轮都输出方图,第一反应是"模型不服从纵横比"——错。它的 <code>image_size</code> API 参数默认 <code>square</code>,我方 harness 从没传过 <code>"auto"</code>;而 prompt 文本里写多少遍"keep aspect ratio"都<strong>覆盖不了 API 参数</strong>。要做公平的纵横比测试,必须显式传 <code>image_size="auto"</code>。先查自己的传参,再怪模型。</p>
+</div>
+
+<div class="card law">
+<h3>定律:构图锁定句对服从度有决定性影响</h3>
+<p>同一模型(NB2),v1 与 v2 唯一区别是结尾一句构图锁定,保真度就从"随意发挥"跃升到接近 NB Pro。跨模型对比里,任何一家 prompt 里多一句约束,排名就不可信——横评必须逐字对齐 prompt,否则测的是 prompt 不是模型。</p>
+</div>
+
+<h2>三个 prompt 全文</h2>
+<p>v1 全文如下;另外两个版本共享同一正文,只在结尾追加构图约束句。</p>
+<pre>v1:
+Turn this low-poly game frame into a photorealistic cinematic sci-fi film still.
+KEEP the airship's exact shape, position, camera angle and livery - glossy red
+nose cone, white-grey mid hull, steel-blue belly, orange tail fins - and keep
+the first-person gun silhouette in the lower right corner. REPLACE the flat
+shading with detailed PBR spacecraft plating: panel lines, rivets, subtle
+weathering. Dramatic key light from a distant sun, cool rim light, deep-space
+background with a dense starfield and a faint teal nebula, volumetric light,
+anamorphic lens flare, fine film grain, IMAX quality.</pre>
+<pre>nbpro_v1plus = v1 + "Preserve the composition exactly."</pre>
+<pre>v2_complock = v1 + "Preserve the composition, framing, aspect ratio and object
+scale exactly - do not zoom, crop, or rotate."</pre>
+
+<h2>结论与选型</h2>
+<p>最终选 <strong>NB2 v2(构图锁定版)</strong>作为 03 篇 Seedance 视频生成的参考图:v2 加锁后它的构图保真接近 NB Pro,单图 $0.06 对 $0.134,且走 fal 一个渠道省事。NB Pro 那 $0.134 走的是 11 个候选 Gemini key 里唯一开了计费的 key#5(key#0 免费档直接 429)——付费渠道本身也是横评成本的一部分。整场横评一张源图打完,总计约 $0.39。</p>
+
+<footer>
+<p><a href="01-episode-pipeline.html">← 01 · 上一篇</a> · <a href="03-seedance-films.html">03 · 下一篇 →</a></p>
+<p>REFLEX LAB</p>
+</footer>
+</div>
+</body>
+</html>

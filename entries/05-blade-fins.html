@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>05 · 叶片尾鳍改造与快速迭代实验台 — REFLEX LAB</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛰️</text></svg>">
+</head>
+<body>
+<header class="site"><div class="wrap"><h1><a href="../index.html">REFLEX <span class="orange">LAB</span></a></h1><p class="sub">运行时改造的 UE6 游戏 × 生成式视频 · 实验记录</p></div></header>
+<div class="wrap">
+<a class="nav-back" href="../index.html">← 返回目录</a>
+<h1 class="title">05 · 叶片尾鳍改造与快速迭代实验台</h1>
+<p class="meta"><span class="tag">2026-09-01</span><span class="tag">运行时几何</span><span class="tag">造型迭代</span><span class="tag">SceneCapture2D</span><span class="tag">hotpatch</span></p>
+
+<p><strong>为什么改 UE 对象:</strong>02/03 把"游戏画面 → 生成式 API 风格化"走到了头,04 的逆向重建给出定量结论——Seedance 把几何锚在参考图上,prompt 只是软约束,船的外形注定漂。既然生成端锁不死几何,那就调头把参考造型<em>建进引擎</em>:UE 对象长成什么样,渲染出来就是什么样,几何由引擎保证,风格化交给下游。这是本站主线的转折点。</p>
+
+<h2>起点:三块方板</h2>
+<p>飞艇尾部原本是三块 12cm 厚的方板,纯占位。用户的要求:改成参考图(NB2 编辑图 / Seedance 成片)里那种大后掠叶片尾鳍。这一条实验记录讲两件事:鳍本身怎么从目测调参走到解析求解,以及为了让"改一个常数、看三个机位"这个循环不再痛苦,搭出来的快速迭代实验台。</p>
+<figure><img src="../assets/fins_before.jpg" alt="改造前的方板尾鳍"><figcaption>改前:尾部三块方板,和参考成片里的掠形叶片完全对不上。</figcaption></figure>
+
+<h2>参考规格:从成片逐帧量出来</h2>
+<p>翼型规格不是拍脑袋,是读图 agent 对 Seedance 成片逐帧做像素测量得到的。下表左列是参考测量,右列是 <code>_as_fins</code>(<code>story/g_airship.py</code>)里最终落地的实现值:</p>
+<table>
+<thead><tr><th>参数</th><th>参考成片测量</th><th>实现(代码)</th></tr></thead>
+<tbody>
+<tr><td>布局</td><td>十字形 4 片同型(背/腹/左/右)</td><td>同,4 片 × 每片 2 个 actor,共 8 个</td></tr>
+<tr><td>根弦</td><td>~0.52–0.55a(a = 长半轴)</td><td>0.60a</td></tr>
+<tr><td>尖弦</td><td>~0.4× 根弦</td><td>0.40× 根弦</td></tr>
+<tr><td>后缘</td><td>与尾尖齐平,垂直于船轴</td><td>同(TE 矩形贴 tail tip)</td></tr>
+<tr><td>前缘后掠</td><td>~45–50°</td><td>42°</td></tr>
+<tr><td>翼尖线</td><td>平行船轴</td><td>同,位于 1.60× 径向半轴处</td></tr>
+<tr><td>厚度</td><td>—(薄板)</td><td>11 uu</td></tr>
+<tr><td>颜色</td><td>sRGB ~#DC732D</td><td>linear (0.72, 0.20, 0.03)</td></tr>
+</tbody>
+</table>
+
+<div class="kpi">
+<div class="box"><div class="v">4×</div><div class="k">十字形同型叶片</div></div>
+<div class="box"><div class="v">42°</div><div class="k">前缘后掠角</div></div>
+<div class="box"><div class="v">~8s</div><div class="k">实验台单轮迭代</div></div>
+<div class="box"><div class="v">6→1</div><div class="k">每轮 WebSocket 往返</div></div>
+</div>
+
+<h2>实现:两块引擎基础形拼一片叶</h2>
+<p>每片叶 = 后缘薄矩形(BasicShapes Cube)+ 前缘掠三角(BasicShapes Cone 压扁充当三角形;100uu、pivot 居中、apex 朝 +Z,类引用在 boot 链里已 pin 进 <code>RX['cls']</code>)。全部无碰撞纯装饰,tint 走 BasicShapeMaterial 的 MID——运行时禁止新建材质,这是 HOTPATCH 法则 8,授课费已交过。掠三角的姿态由 Yaw(Z)·Pitch(Y)·Roll(X) 组合旋转给出,四片各有一组 rotator。所有 actor 挂进 <code>_AS['fins']</code>,respawn/off 的销毁逻辑因此保持通用,不需要为鳍写专门的清理分支。全部翼型参数打包成 <code>fin_spec</code> 写入 episode.json 与 manifest.jsonl——训练数据如实记录几何,下游不用反猜。</p>
+
+<h2>迭代:v1–v3 目测,v4 解析</h2>
+<p>v1 到 v3 是常规打法:改常数、拍侧视、目测。三轮都卡在同一个几何事实上——这条船是个胖椭球(长/高 ≈ 1.9,参考船 2.7–2.8),轮廓外可见的径向带很窄,掠形三角大半埋进壳里,露出来的部分看着像曲棍球杆,不像后掠翼。</p>
+<div class="grid2">
+<figure><img src="../assets/fins_v1.jpg" alt="v1"><figcaption>v1:第一版拼装,掠三角位置目测,前缘几乎全埋进轮廓。</figcaption></figure>
+<figure><img src="../assets/fins_v2_side.jpg" alt="v2 侧视"><figcaption>v2:抬高了三角,但可见段太短,侧影是曲棍球杆。</figcaption></figure>
+<figure><img src="../assets/fins_v3_side.jpg" alt="v3 侧视"><figcaption>v3:继续调常数,掠角在可见带里仍读不出来。</figcaption></figure>
+<figure><img src="../assets/fins_v4_side.jpg" alt="v4 侧视"><figcaption>v4:放弃目测,改解析求解锥体变换,一次到位。</figcaption></figure>
+</div>
+<p>v4 的做法:不再猜锥体摆哪,而是把它当约束求解——给定翼尖目标点、翼根埋入半径(0.40× 半轴)、后掠角 42°,反解出锥体的缩放、中心与旋转。倾角 t 下 apex 相对中心的偏移是 (−sin t, +cos t)·H/2,base 中心取镜像,actor 中心即两者中点;斜边长 H = (r_apex − r_base)/cos t。三个输入定死,输出唯一。</p>
+
+<div class="card law"><strong>定律:目测三轮之后就该列方程。</strong>可见带窄的曲面上,"调常数看效果"的反馈信号本身就是失真的——你在优化投影,不是几何。把目标写成约束(apex 落点、埋入深度、掠角),解析反解变换,一次收敛。</div>
+
+<h2>定妆</h2>
+<div class="grid3">
+<figure><img src="../assets/fins_final_34rear.jpg" alt="定妆 3/4 后视"><figcaption>3/4 后视:十字形四片,后缘与尾尖齐平。</figcaption></figure>
+<figure><img src="../assets/fins_final_side.jpg" alt="定妆侧视"><figcaption>侧视:前缘后掠清晰,翼尖线平行船轴。</figcaption></figure>
+<figure><img src="../assets/fins_final_top.jpg" alt="定妆顶视"><figcaption>顶视:水平对鳍,与垂直对同型。</figcaption></figure>
+</div>
+<figure><img src="../assets/fins_before_after.jpg" alt="改造前后对比"><figcaption>改前(方板)vs 改后(掠形叶片)横向对比。</figcaption></figure>
+
+<h2>快速迭代实验台</h2>
+<p>促成实验台的是用户的一句吐槽:循环太慢。旧流程里,摆机位和导图是分开发送的指令,一轮看 3 个机位要 6 次 WebSocket 往返,而且每次重建都全量重烤船壳的 MC 网格——壳根本没变,烤它纯属浪费。重构后的 <code>_fin_lab.py</code>:一次发送完成一整轮——只重建鳍(不烤壳),用一个私有 SceneCapture2D(<code>bCaptureEveryFrame=False</code>,按需 <code>CaptureScene()</code>)在三个机位各拍一张,落盘三张图。单轮循环约 8 秒。</p>
+
+<div class="card law"><strong>定律:迭代速度是造型质量的上游。</strong>6 次往返 + 全量重烤时,每轮成本高到只肯试"应该对"的改动;8 秒一轮之后,试错本身变便宜,v4 的解析方案就是在实验台上快速验证出来的。给循环里只放必须重建的东西:鳍变就只建鳍。</div>
+
+<div class="card warn"><strong>坑 × 2(都出在实验台上):</strong>
+<ul>
+<li><strong>ExportRenderTarget 异步落盘</strong>——调用返回不等于文件写完,读早了拿到半截 PNG。要等文件尺寸稳定再读。</li>
+<li><strong>漂浮的枪</strong>——同一次 exec 里挪玩家再拍照,viewmodel/HUD 由逐帧 tick 驱动还没跟上,截图里武器悬在旧位置。挪位要提前一发指令,或同参数再跑一遍。</li>
+</ul>
+另有一条远程桌面纪律:不许把 UE 窗口调前台(会抢走用户鼠标),单帧截图后台拍就够了。</div>
+
+<footer><a href="04-inverse-recon.html">← 04 · 逆向重建</a> · REFLEX LAB</footer>
+</div>
+</body>
+</html>

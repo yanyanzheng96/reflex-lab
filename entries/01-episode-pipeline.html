@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>01 · 自动驾驶 Episode 数据合成管线 — REFLEX LAB</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛰️</text></svg>">
+</head>
+<body>
+<header class="site"><div class="wrap"><h1><a href="../index.html">REFLEX <span class="orange">LAB</span></a></h1><p class="sub">运行时改造的 UE6 游戏 × 生成式视频 · 实验记录</p></div></header>
+<div class="wrap">
+<a class="nav-back" href="../index.html">← 返回目录</a>
+<h1 class="title">01 · 自动驾驶 Episode 数据合成管线</h1>
+<p class="meta"><span class="tag">2026-08-31</span><span class="tag">UE6 runtime</span><span class="tag">数据合成</span><span class="tag">MediaCapture</span><span class="tag">Seedance / Wan VACE</span></p>
+
+<h2>这是什么</h2>
+<p>REFLEX 是在 UE6 里<strong>运行时构建</strong>的 FPS:不开编辑器 UI 流程、不编译 C++,全部逻辑经 WebSocket 桥(port 9102)热注入。这条 episode 管线让游戏自己开车:一台程序自控的平滑轨道相机绕着飞艇转,按计划定时开枪,同时把每一帧的相机位姿和每一发子弹的真实弹道写进 JSON,再把同一段画面录成 mp4。产出的 <code>episode.json + episode.mp4</code> 数据对,是后面 02(图像编辑)、03(视频生成)、04(逆向重建)的全部源头数据。</p>
+
+<div class="kpi">
+<div class="box"><div class="v">108.8</div><div class="k">episode 实测捕获 fps</div></div>
+<div class="box"><div class="v">1.08–1.23°</div><div class="k">准星与实际命中夹角</div></div>
+<div class="box"><div class="v">±1 帧</div><div class="k">mp4 与 json 的 t=0 对齐</div></div>
+</div>
+
+<h2>一个 episode 长什么样</h2>
+<p>轨迹由 seed 决定:theta 线性推进 + 半径/高度各自正弦摆动,look-at 点叠加 lissajous 游走,所以每条轨道都平滑但不重样。运行期间每帧记录 <code>{t, pos, yaw, pitch}</code>,每发子弹记录实际方向、命中点、命中经纬和洞数。以 ep_0008(seed 990022)为例,读它的 <code>episode.json</code> 和 <code>capture.json</code>:14.0s 时长,记录 1485 帧相机位姿、6 发射击;捕获侧 1699 帧、墙钟 15.62s、实测 108.76fps;目标飞艇网格 4288 quads,带 nose/dorsal/belly/tail 四色分区涂装。mp4 掐头 0.5s 后与 json 的 t=0 对齐,误差 ±1 帧。</p>
+
+<div class="grid2">
+<figure><img src="../assets/ep0008_first_frame.jpg" alt="ep_0008 首帧"><figcaption>ep_0008 首帧:轨道相机开场位,飞艇在射程内</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/ep0008_clip_2to7.mp4"></video><figcaption>ep_0008 成品片段(2–7s,4:3):轨道运镜 + 定时射击</figcaption></figure>
+</div>
+
+<h2>管线步骤(tools/ep_run.py)</h2>
+<ol>
+<li><code>episode_arm(seed, dur)</code> — 生成全新飞艇、轨迹与射击计划;</li>
+<li>把游戏窗口调到前台(见下面的坑);</li>
+<li><code>_cap_start → episode_go</code> — 捕获滚动、轨迹开跑;</li>
+<li>睡满 dur 后 <code>episode_end</code> — host 写出 episode.json;</li>
+<li><code>_cap_stop</code> + ffmpeg — 就地在 episode 目录里合成 episode.mp4;</li>
+<li>写 capture.json sidecar:实测 fps、帧数、对齐说明。</li>
+</ol>
+
+<h2>瞄准编排(aim choreography)</h2>
+<p>早期版本有个显眼的假:准星画在屏幕中心,子弹却打向预定命中点,画面里"准星不随射击点动"。修复后的编排是:开火前 smoothstep 转向 0.55s → 保持 0.25s 穿过开火时刻 → 0.45s 回摆到巡航视线。这样每一发在画面上都是"看向哪、打向哪",实测准星与实际命中的夹角 1.08–1.23°,数据对下游可用。</p>
+
+<div class="card law">
+<h3>定律 · MediaCapture 泄漏</h3>
+<p>每轮录制都新建并 pin 一个 FileMediaOutput/MediaCapture,会在媒体子系统里<strong>累积注册实例</strong>:同一个 host 内捕获 fps 从 41.6 衰减到 4.1、再到 3.5。修复 = 复用同一个 pinned capture —— <code>StopCapture(True)</code> 之后重新 <code>CaptureTextureRenderTarget2D</code>。修复后连续三轮 65.7 / 65.7 / 65.5 平稳,episode 场景实测 108.8fps。运行时游戏里"每次都 new"的资源模式,默认先怀疑泄漏。</p>
+</div>
+
+<div class="card law">
+<h3>定律 · 先读 API 规格,再定录制参数</h3>
+<p>Seedance 2.0 参考视频要求 2–15s、&lt;50MB、480–720p;Wan VACE 要求 fps≤24 且 ≤241 帧。此前原始录制 16.80s / 94.3fps 双双超标,只能报错重来。现在管线直接双输出:<code>episode.mp4</code>(master,1280 宽,14.0s,720p,seedance-ready)+ <code>episode_vace.mp4</code>(16fps、≤240 帧,wan-vace-ready),并在录制端加了掐头 + 限时。</p>
+</div>
+
+<table>
+<thead><tr><th>输出</th><th>规格</th><th>面向 API</th></tr></thead>
+<tbody>
+<tr><td>episode.mp4</td><td>master,14.0s,720p(1280 宽)</td><td>Seedance 2.0(2–15s / &lt;50MB / 480–720p)</td></tr>
+<tr><td>episode_vace.mp4</td><td>16fps,≤240 帧</td><td>Wan VACE(fps≤24 / ≤241 帧)</td></tr>
+</tbody>
+</table>
+
+<div class="card warn">
+<h3>坑 · 后台窗口硬节流</h3>
+<p>未聚焦的 UE 窗口被硬限在 ~20fps,录出来的 episode 帧率直接残废;单帧截图不受影响,所以平时看不出来。ep_run.py 在开录前用 Win32 <code>SetForegroundWindow</code> 强制把游戏窗口调到前台。</p>
+</div>
+
+<h2>小结</h2>
+<p>这条管线把"游戏自己玩自己"变成了可复现的数据工厂:一个 seed 进去,一对严格对齐(±1 帧)的视频 + 逐帧位姿 / 逐发弹道 JSON 出来,且直接满足两家视频生成 API 的入参规格。02 用它的首帧做图像编辑对比,03 用它的片段喂 Seedance 做视频生成,04 再从生成的视频里逆向重建飞艇形状与轨迹 —— 全部回头对着这里的 ground truth 打分。</p>
+
+<footer>
+<p><span></span><a href="02-image-edits.html">下一篇:02 · 图像编辑 →</a></p>
+<p>REFLEX LAB</p>
+</footer>
+</div>
+</body>
+</html>

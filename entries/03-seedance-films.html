@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>03 · Seedance 参考生视频:宇宙飞艇大片 — REFLEX LAB</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛰️</text></svg>">
+</head>
+<body>
+<header class="site"><div class="wrap"><h1><a href="../index.html">REFLEX <span class="orange">LAB</span></a></h1><p class="sub">运行时改造的 UE6 游戏 × 生成式视频 · 实验记录</p></div></header>
+<div class="wrap">
+<a class="nav-back" href="../index.html">← 返回目录</a>
+<h1 class="title">03 · Seedance 参考生视频:宇宙飞艇大片</h1>
+<p class="meta"><span class="tag">2026-09-01</span><span class="tag">seedance-2.0</span><span class="tag">reference-to-video</span><span class="tag">fal.ai</span><span class="tag">几何一致性</span></p>
+
+<h2>输入:一张编辑图 + 一段游戏片段</h2>
+<p>目标是把自动驾驶 episode 的游戏渲染升级成电影感成片。走 fal.ai 的 <code>bytedance/seedance-2.0/reference-to-video</code> 端点,双参考:<code>@Image1</code> 是 02 篇里 NB2(composition-locked v2)产出的编辑图,负责外观;<code>@Video1</code> 是 ep_0008 episode 的 2–7 秒切片(4:3 裁切),负责相机运动、构图和开火时序。参数 <code>generate_audio=false</code>(无音效)、<code>duration=auto</code>、<code>resolution=1080p</code>、<code>aspect_ratio=4:3</code>。两条约 $1。</p>
+<div class="grid2">
+<figure><img src="../assets/edit_nb2_v2.jpg" alt="NB2 编辑图,@Image1 参考"><figcaption>@Image1:NB2 编辑图(nano_banana2_edit_v2)——铆接船体、暗红鼻锥、白色板材、橙色尾翼</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/ep0008_clip_2to7.mp4"></video><figcaption>@Video1:episode_2to7_4x3.mp4,游戏渲染切片,提供相机与开火时序</figcaption></figure>
+</div>
+
+<div class="kpi">
+<div class="box"><div class="v">1664×1248</div><div class="k">输出分辨率 @24fps</div></div>
+<div class="box"><div class="v">5.04s</div><div class="k">成片时长(7.5 MB)</div></div>
+<div class="box"><div class="v">320 / 285s</div><div class="k">v1 / v2 渲染耗时</div></div>
+<div class="box"><div class="v">~$1</div><div class="k">两条合计</div></div>
+</div>
+
+<h2>成片:v1 与 v2(geolock)</h2>
+<p>v1 的 prompt 只描述外观与"跟随 @Video1 的相机运动/构图/开火时序";v2 在其上追加了逐帧几何冻结条款,其余不变。</p>
+<div class="grid2">
+<figure><video controls preload="metadata" src="../assets/seedance_v1.mp4"></video><figcaption>v1:seedance_ep0008_nb2_v1(request 01a05baf…fe84,render 320s)</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/seedance_v2_geolock.mp4"></video><figcaption>v2 geolock:seedance_ep0008_nb2_v2_geolock(request 01a05bb9…645e3f,render 285s)</figcaption></figure>
+</div>
+
+<h2>叠加验证:成片到底有没有跟住源</h2>
+<p>把源 episode 切片以半透明方式叠回各自成片:画面里白色板材、橙色尾翼的是 Seedance 生成的船;呈暗红色半透明"幽灵"的椭球(带 HUD 准星)是游戏源船。两层重合度就是几何保真度。</p>
+<div class="grid2">
+<figure><video controls preload="metadata" src="../assets/overlay_v1.mp4"></video><figcaption>overlay v1:源船幽灵与生成船明显分离——两艘船</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/overlay_v2.mp4"></video><figcaption>overlay v2:源椭球幽灵套进生成船体内,大体重合</figcaption></figure>
+</div>
+
+<div class="card warn">
+<strong>v1 的坑:画面里其实有"两艘船"。</strong>成片单看很唬人,但半透明叠加立刻现形:生成船与源船在位置、尺度、朝向上全都漂了,幽灵和实体各走各的。只看成片验收会完全漏掉这一点——叠加验证必须做。
+</div>
+
+<div class="card law">
+<strong>几何冻结条款(v2 唯一改动,diff_vs_v1)。</strong>
+<blockquote>Preserve the EXACT geometry of @Video1 in every frame: the airship's silhouette, proportions, scale and screen position must match @Video1 frame-by-frame. Only change surface materials, lighting and background to cinematic quality - do not redesign, resize or reposition the ship or the gun.</blockquote>
+<p>救回了什么:位置与朝向——叠加里两船大体重合,源椭球幽灵稳定套在生成船体内部。救不回什么:残余比例漂移仍在,生成的船比源船更长更壮。prompt 能把船"按"回原位,但按不住它的体型。</p>
+</div>
+
+<table>
+<thead><tr><th></th><th>v1</th><th>v2 geolock</th></tr></thead>
+<tbody>
+<tr><td>prompt</td><td>外观 + 跟随相机/时序</td><td>同 v1 + 逐帧几何冻结条款</td></tr>
+<tr><td>render_s</td><td>320</td><td>285</td></tr>
+<tr><td>叠加结果</td><td>两艘明显分离的船</td><td>大体重合,残余比例漂移</td></tr>
+</tbody>
+</table>
+
+<h2>为什么 prompt 锁不死几何</h2>
+<p>四个叠在一起的原因:</p>
+<ul>
+<li>参考视频先被有损编码成潜空间语义表示,像素坐标在这一步就不保了;</li>
+<li>条件经 cross-attention 注入,是软约束,一路和模型的"电影审美先验"拔河;</li>
+<li>文本 token 本质上表达不了逐像素坐标,"frame-by-frame match" 写得再狠也只是语义倾向;</li>
+<li>该端点没有 ControlNet / 深度图 / 边缘图这类硬结构条件通道,想硬锁也无处下手。</li>
+</ul>
+<p>还有一层更隐蔽的:<strong>双参考在几何上互相矛盾</strong>。@Image1(NB2 编辑图)本身已经改了船的比例,@Video1 提供的是原始几何的运动。两个参考各说各话时模型必须选边——04 篇的逆向重建给出定量铁证:Seedance 选择了图。</p>
+
+<div class="card warn">
+<strong>fal 锁号坑。</strong>实验中途账号被错误锁定,报 <code>User is locked. Reason: TOP_UP</code>,而账上实际有 100 credits。这是 fal 已知 bug(GitHub #922 / #914 / #1094):解锁按网关灰度恢复,会抖动——同一分钟内有的请求过、有的仍报锁。重试要带退避,别看到一次成功就以为恢复了。
+</div>
+
+<h2>下一步</h2>
+<p>叠加只能给定性结论("漂了""大体重合")。要回答"漂了多少、往哪边漂、模型到底信图还是信视频",得把生成船的形状和轨迹从成片里逆向重建出来,和游戏内真值逐帧对齐——见 <a href="04-inverse-recon.html">04 · 逆向重建</a>。</p>
+
+<footer>
+<p><a href="02-image-edits.html">← 02 · 图像编辑</a> · <a href="04-inverse-recon.html">04 · 逆向重建 →</a></p>
+<p>REFLEX LAB</p>
+</footer>
+</div>
+</body>
+</html>

@@ -20,6 +20,18 @@
 <strong>Unreal2Bridge 训练数据合成管线</strong>:游戏渲染 episode → 商业图像/视频编辑 API 做风格化 →
 逆向重建闭环验证。这里按时间记录每一次实验:做了什么、量到了什么、踩了什么坑。</p>
 
+<div class="card law">
+  <h3>本站主线:一次完整的"生成式 API → 改引擎对象"转折</h3>
+  <p>
+  <strong>01</strong> 游戏自己渲染带全参数标注的 episode →
+  <strong>02</strong> 把首帧喂给五家图像编辑 API(输入/输出/prompt 全留档),选出 NB2 →
+  <strong>03</strong> NB2 参考图 + 游戏片段喂 Seedance 出"大片",v1 叠加发现两艘船,v2 几何冻结条款也只救回一半 →
+  <strong>04</strong> 逆向重建定量归因:Seedance 把几何锚在<em>参考图</em>上,prompt 是软约束,锁不死几何 →
+  <strong>05</strong> 所以调头:<em>直接修改 UE 对象本身</em>,把参考图里的叶片尾鳍量化成翼型参数,建进游戏里——
+  几何对齐从此不靠祈祷 prompt,靠引擎。
+  </p>
+</div>
+
 <a class="entry-card" href="entries/01-episode-pipeline.html">
   <span class="date">2026-08-31</span>
   <h2><span class="num">01</span>自动驾驶 Episode 数据合成管线</h2>

@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>04 · 逆向重建:从生成视频反推外形与轨迹 — REFLEX LAB</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛰️</text></svg>">
+</head>
+<body>
+<header class="site"><div class="wrap"><h1><a href="../index.html">REFLEX <span class="orange">LAB</span></a></h1><p class="sub">运行时改造的 UE6 游戏 × 生成式视频 · 实验记录</p></div></header>
+<div class="wrap">
+<a class="nav-back" href="../index.html">← 返回目录</a>
+<h1 class="title">04 · 逆向重建:从生成视频反推外形与轨迹</h1>
+<p class="meta"><span class="tag">2026-09-01</span><span class="tag">inverse rendering</span><span class="tag">分割</span><span class="tag">analysis-by-synthesis</span><span class="tag">Seedance</span></p>
+
+<h2>动机:把 03 的"漂移感"变成数字</h2>
+<p>上一篇(03)肉眼能看出 Seedance 生成的飞艇比源片段"胖了、飘了",但这只是感觉。这次的问题是定量的:生成视频里的船,等效外形是什么?隐含的相机轨迹是什么?偏差锚在哪一帧、哪个输入上?为此在 REFLEX 仓库写了 <code>tools/video_recon.py</code>,一条 calib → observe → fit 的三段管线,输入是 121 帧 @24fps、1664×1248 的 <code>seedance_ep0008_nb2_v2_geolock.mp4</code>,真值是引擎逐帧记录的 <code>episode.json</code>(片段 t=0 对应 episode t=2.0,源画面为 1280×720 母版上 192,48 起 896×672 的裁切,f=640px,主点 448,312)。</p>
+
+<h2>管线第一段:calib —— 先证明投影模型可信</h2>
+<p>把真值椭球当作 dual-quadric,用记录的相机位姿解析投影回<strong>源片段</strong>。一个容易踩的细节:引擎记录的 radii 是壳的中面,外表面要再加 22cm 半壳厚。修正后逐帧轮廓紧贴船体——投影模型可信,后面所有拟合都建立在这一步之上。</p>
+<figure><img src="../assets/recon_calib.jpg"><figcaption>calib:真值椭球(dual-quadric)投影回源片段,轮廓逐帧贴合船体,相机/投影模型通过校验</figcaption></figure>
+
+<h2>第二段:observe —— 121 帧逐帧分割</h2>
+<p>生成视频里没有任何真值,只能靠分割。最终配方:亮度(lum&gt;55)∪ 红色主导掩码(兜住暗红船头)→ 扣掉静态枪械多边形 → 重腐蚀取核 + 上一帧椭圆门控(拒掉太阳光晕、星云、泄气烟羽)→ 有限"回生长" → 在环带边缘点上做 IRLS 鲁棒椭圆拟合,并逐帧钳制(中心 ≤5px、轴长 ≤1.5%、角度 ≤2°)。产物是 <code>observations.json</code>,121/121 帧全部稳定。</p>
+<figure><img src="../assets/recon_observe.jpg"><figcaption>observe:逐帧分割 QA 表,腐蚀核+门控+环带鲁棒拟合后的观测椭圆</figcaption></figure>
+
+<h2>第三段:fit —— 用合成去分析</h2>
+<p>内层对每帧用 2×2 牛顿解 yaw/pitch,让投影中心对准观测中心;外层做鲁棒最小二乘,同时拟合椭球三轴、焦距、时间偏移和轨道族参数(theta0/w/r_p/z_p),匹配轮廓协方差。<strong>规范(gauge)选择</strong>:纯图像数据分不开"船变大"和"相机变近",所以把相机距离参数(r0/r_amp/z_amp)钉死在真值上,尺寸变化全部记在船头上。拟合残差 RMS 0.145,拟合焦距 697.5px(假设 640px),时偏 −0.036s。</p>
+<figure><img src="../assets/recon_curves.jpg"><figcaption>fit:重建曲线 vs 真值曲线。开头下压、t≈4.6 横移峰、结尾抬升三个运动特征在两条曲线里都出现</figcaption></figure>
+
+<div class="kpi">
+<div class="box"><div class="v">×1.54</div><div class="k">首帧线性放大(面积 ×2.4)</div></div>
+<div class="box"><div class="v">33%</div><div class="k">隐含轨道角速度偏慢(−0.158 vs −0.235)</div></div>
+<div class="box"><div class="v">2×</div><div class="k">等效椭球长轴 661 vs 真值 340</div></div>
+<div class="box"><div class="v">2/3</div><div class="k">开枪事件保留(且各提前约 0.3s)</div></div>
+</div>
+
+<h2>铁证:几何锚在 @Image1,不是 @Video1</h2>
+<p>NB2 参考图相对真值 t=2.0 帧:线性放大 ×1.54(面积 ×2.4),中心偏移 (−18,−55)px。而 Seedance 生成视频<strong>首帧</strong>的漂移量是 ×1.557、(−18,−56)px——与 NB2 逐位一致。结论只有一个:Seedance 把几何锚定在 @Image1(参考图)上,而不是 @Video1(源片段)上。03 里看到的"整体偏胖偏移"不是扩散噪声,是条件优先级问题。</p>
+<figure><img src="../assets/recon_nb2_vs_truth.jpg"><figcaption>NB2 参考图 vs 真值 t=2.0:×1.54 / (−18,−55)px,与 Seedance 首帧漂移逐位一致</figcaption></figure>
+
+<h2>尺寸"呼吸"与被部分复制的运动</h2>
+<p>漂移不是常数:片内从 ×1.53 涨到峰值 ×1.92(t≈4.5–5.5)再回落到 ×1.6,而真值轮廓几乎恒定——生成的船在"呼吸"。相对运动的<strong>形状</strong>倒是被部分复制了:开头的下压、t≈4.6 的横移峰、结尾的抬升都在。但节奏慢了:隐含轨道角速度 w=−0.158,真值 −0.235,慢 33%,像是模型自带的"电影感"运镜先验。等效椭球(距离钉死规范下)660.9×161.9×210.6 vs 真值 339.6×162.1×153.6:长 2 倍、高 1.4 倍、宽度不变。鳍和早期船头分割低估会略微夸大长轴,但远解释不了 2 倍。开枪事件:窗口内真值 3 发(2.0/4.56/6.78s,t=2.0 那发正好在片头没留爆闪),生成视频保留 2 次爆闪(4.29/6.42s),各提前约 0.3s。</p>
+<figure><img src="../assets/recon_overlay_sheet.jpg"><figcaption>叠加表:红=真值投影,绿=重建,黄=观测</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/recon_overlay.mp4"></video><figcaption>recon_overlay.mp4:三色叠加逐帧回放,可直接看到尺寸呼吸与运动节奏差</figcaption></figure>
+
+<div class="card warn">
+<h3>分割战史(observe 段的三个坑)</h3>
+<p>三种污染源:镜头光晕、爆炸火花、泄气烟羽。纯阈值不可分——光晕核心的亮度和船体完全重叠;单纯跟踪门控也曾发散——一旦凸包吃进光晕,下一帧门控跟着变大,正反馈直接跑飞。最终靠四件套稳住:重腐蚀取核(只信最结实的像素)→ 上帧椭圆门控 → 有限回生长 → 环带 IRLS 鲁棒拟合 + 逐帧钳制。121/121 帧无一发散。</p>
+</div>
+
+<div class="card law">
+<h3>结论</h3>
+<p>逆向管线把 03 的主观印象变成了可复现实数:几何锚定在参考图(×1.54 逐位对上)、尺寸会呼吸(峰值 ×1.92)、运动形状可复制但节奏慢 33%、离散事件三保二且提前 0.3s。想要像素级对齐,提示词和参考图给的"软条件"不够,得上结构硬条件——Wan VACE 一类的控制通道,或直接从引擎导出深度/轮廓真值做条件。这是下一步的方向。</p>
+</div>
+
+<footer>
+<p><a href="03-seedance-films.html">← 03 · Seedance 成片</a> · <a href="05-blade-fins.html">05 · 刀锋鳍 →</a></p>
+<p>REFLEX LAB</p>
+</footer>
+</div>
+</body>
+</html>
