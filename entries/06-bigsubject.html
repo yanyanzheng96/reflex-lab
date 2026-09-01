@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>06 · 大主体假设:v7 首帧四模横评 — REFLEX LAB</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛰️</text></svg>">
+</head>
+<body>
+<header class="site"><div class="wrap"><h1><a href="../index.html">REFLEX <span class="orange">LAB</span></a></h1><p class="sub">运行时改造的 UE6 游戏 × 生成式视频 · 实验记录</p></div></header>
+<div class="wrap">
+<a class="nav-back" href="../index.html">← 返回目录</a>
+<h1 class="title">06 · 大主体假设:v7 首帧四模横评</h1>
+<p class="meta"><span class="tag">2026-09-01</span><span class="tag">image edit</span><span class="tag">大主体假设</span><span class="tag">定量评分</span></p>
+
+<p><strong>假设(用户提出):</strong>把相机拉近、让飞船占满画幅,图像编辑模型会更好地保住外形——02 篇里源帧的船只占画面中部一小块,编辑模型对小主体的形状信号本来就弱。
+本轮素材:05 篇 v7 新结构的 3.35s 视频首帧(相机偏移按 K=0.42 拉近,船占画幅 ~80%,全参数侧车 v7_clip.json 齐备)。
+四个模型、统一构图锁定 prompt(02 的公平性教训)、Seedream 修正 round-1 的 harness 错误(<code>image_size="auto"</code>)。FLUX.2 维持出局(输入审查×枪)。</p>
+
+<figure><img src="../assets/v7_clip_first.jpg" alt="源帧"><figcaption>输入:v7 大主体首帧(1280×720,ep_0008 t=7.0 机位方向、径向拉近 0.42)。</figcaption></figure>
+
+<h2>四模输出</h2>
+<div class="grid2">
+<figure><img src="../assets/v7r3_kontext.jpg" alt="Kontext"><figcaption>FLUX.1 Kontext [pro] · $0.04 · 11.7s</figcaption></figure>
+<figure><img src="../assets/v7r3_seedream.jpg" alt="Seedream"><figcaption>Seedream 4.0 edit(image_size=auto)· $0.03 · 21.3s</figcaption></figure>
+<figure><img src="../assets/v7r3_nb2.jpg" alt="NB2"><figcaption>Nano Banana 2 edit · $0.06 · 14.3s</figcaption></figure>
+<figure><img src="../assets/v7r3_nbpro.jpg" alt="NB Pro"><figcaption>NB Pro / Gemini 3 Pro Image · $0.134 · 19.1s</figcaption></figure>
+</div>
+<figure><img src="../assets/v7r3_grid.jpg" alt="总对比"><figcaption>源帧 + 四模输出总览。</figcaption></figure>
+
+<h2>定量:轮廓椭圆 vs 源帧</h2>
+<p>方法同 04 篇:分割船体轮廓(静态枪区掩码)→ 凸包椭圆拟合 → 与源帧比中心漂移、尺寸比、纵横比。全部归一到 1280 宽。源帧纵横比 2.44。</p>
+<table>
+<thead><tr><th>模型</th><th>中心漂移(px)</th><th>尺寸比</th><th>纵横比(源 2.44)</th><th>一句话</th></tr></thead>
+<tbody>
+<tr><td>FLUX.1 Kontext</td><td><strong>82</strong>(最稳)</td><td><strong>0.89</strong></td><td>3.09(拉瘦)</td><td>位置尺寸最忠实,但把船削细了</td></tr>
+<tr><td>Seedream 4.0</td><td>216</td><td>1.28</td><td><strong>2.43</strong>(精确)</td><td>比例完美复刻,整体偏移放大;鳍/尾锥/枪保留最全</td></tr>
+<tr><td>Nano Banana 2</td><td>186</td><td>1.23</td><td><strong>2.43</strong>(精确)</td><td>本轮不再压短增壮(02 篇的老毛病),纹理最电影</td></tr>
+<tr><td>NB Pro / Gemini</td><td>268</td><td>1.41</td><td>2.55</td><td>漂移和放大都最大,还加了俯仰倾角</td></tr>
+</tbody>
+</table>
+
+<div class="card law">
+<h3>初步结论:大主体假设成立(方向性)</h3>
+<p>02 篇小主体时代表性漂移是线性 ×1.5+ 的放大;本轮尺寸比收敛到 0.89–1.41,且 Seedream 与 NB2 的<em>纵横比</em>做到了逐位复刻(2.43 vs 2.44)——比例信息这次真的传过去了。
+注意口径:船体/prompt/涂装与 02 不同代,单样本,分割受光晕干扰,是方向性证据不是终审。终审在下一步:拿 v7_clip 走 Seedance,用 04 的重建管线对比新旧两代的几何保持率。</p>
+</div>
+
+<div class="card warn">
+<h3>过程坑</h3>
+<p>NB Pro 的计费 key 索引又漂了(上轮 key#5,本轮 key#7 才通)——Google 侧 key 状态会变,调用要带全量轮询兜底。Seedream 的 <code>image_size="auto"</code> 本轮生效,输出 1312×736 原生宽幅,round-1 的方图确认是 harness 传参问题,不是模型问题。</p>
+</div>
+
+<footer><a href="05-blade-fins.html">← 05 · 叶片尾鳍改造</a> · REFLEX LAB</footer>
+</div>
+</body>
+</html>
