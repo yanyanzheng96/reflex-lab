@@ -64,6 +64,25 @@
 此前基于椭圆拟合的"Kontext 位移最小"分数与第一版 IoU 均被分割污染(星云并入/暗鼻丢失),以本表为准。
 <strong>选型再次翻案:@Image1 用 Seedream</strong>——IoU 最高、比例逐位复刻、鳍/尾锥/枪保留最全,且它就是本轮最便宜的($0.03)。</p>
 
+<h2>第三版仪器:解析真值 + GrabCut(用户第二次抓错)</h2>
+<p>用户接着指出:v2 的轮廓线本身画得不对。反思成立——<strong>绿线根本不该来自阈值分割</strong>:
+v7_clip.json 里躺着全套真值(相机位姿+内参+椭球+鳍+尾锥解析几何),绿线应该<em>解析投影</em>;
+紫线的阈值分割是为游戏平涂调的,切照片必然漏暗鼻、吞光晕。重做:绿 = 解析投影(先在 UE 源帧上贴合自检,仪器先校准再读数),
+紫 = 以解析掩码为先验的 GrabCut(沿照片真实边缘收敛)。</p>
+<figure><img src="../assets/v7r3_greencheck.jpg" alt="解析轮廓自检"><figcaption>仪器校准:解析投影轮廓(绿)叠在 UE 源帧上——船体/鳍/尾锥严丝合缝,右下缺口为枪区排除。</figcaption></figure>
+<figure><img src="../assets/v7r3_contours_v3.jpg" alt="v3轮廓终审"><figcaption>终审:绿 = 解析真值,紫 = GrabCut。Kontext 的鼻部前伸与船体上抬被如实画出(顺带证伪了此前"Kontext 变瘦"——也是分割假象,它其实变大)。</figcaption></figure>
+<table>
+<thead><tr><th>模型</th><th>IoU(v3 终审)</th><th>UE 被覆盖</th><th>编辑船在真值内</th></tr></thead>
+<tbody>
+<tr><td><strong>Seedream 4.0</strong></td><td><strong>0.936</strong></td><td>0.94</td><td>0.99</td></tr>
+<tr><td>Nano Banana 2</td><td>0.917</td><td>0.94</td><td>0.97</td></tr>
+<tr><td>NB Pro / Gemini</td><td>0.909</td><td>0.96</td><td>0.95</td></tr>
+<tr><td>FLUX.1 Kontext</td><td>0.830</td><td>0.94</td><td>0.88</td></tr>
+</tbody>
+</table>
+<p>排名与 v2 一致(用户的肉眼判读两次都对),但绝对值大幅上修:四家其实都把 UE 船盖住了 94-96%,差别在"多画了多少"——Kontext 外溢最多(12%)。
+大主体假设的终审强度也随之上修:<strong>0.83-0.94 的 IoU</strong>,对比 02 小主体时代的 ×1.5 放大漂移,是质的变化。</p>
+
 <div class="card law">
 <h3>初步结论:大主体假设成立(方向性)</h3>
 <p>02 篇小主体时代表性漂移是线性 ×1.5+ 的放大;本轮尺寸比收敛到 0.89–1.41,且 Seedream 与 NB2 的<em>纵横比</em>做到了逐位复刻(2.43 vs 2.44)——比例信息这次真的传过去了。
