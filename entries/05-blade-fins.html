@@ -78,6 +78,31 @@
 </ul>
 另有一条远程桌面纪律:不许把 UE 窗口调前台(会抢走用户鼠标),单帧截图后台拍就够了。</div>
 
+<h2>第二轮(v5–v7):船体长细比才是根因</h2>
+<p>上面的叶片交付后,用户的判词是:<strong>"形状和几何和图片里的还是不一样。"</strong>复盘发现两个耦合错误:
+其一,v4 的鳍是"高窄型"——为了在胖船上露出鳍,把翼尖半径从参考的 1.30× 拉到 1.60×,翼展反超弦长,读起来像船桨;
+参考鳍是"矮长型",根弦<em>大于</em>露出翼展(纵横比 ≈0.75)。其二,根因在船体:参考船长细比 2.7–2.8,我们的椭球只有 1.9——
+胖船上鳍要么埋进轮廓、要么拉高变桨,比例注定两难。</p>
+<div class="card law">
+  <h3>修法:船体、鳍、尾锥、涂装一起动</h3>
+  <p>船体半径改为 300–330 / 100–118 / 105–125(a=330 顶着 MC brick 上限 792),长细比 2.7–2.9;
+  鳍回到参考数字:翼尖 1.45×半轴、根弦 0.55a、尖弦 0.37×根弦、后缘悬伸 0.06a 越过尾尖,掠角由平面目标点<em>反解</em>;
+  灰色尾锥(底径 0.34c、长 0.8c)填满椭球尾尖收窄后鳍根悬空的区域;涂装同步参考:白船身(原黄背条)、暗红鼻(u&gt;0.45,占身长约 28%)、软化蓝腹。
+  paint 字典移入 <code>_AS['paint']</code>,episode.json 直接读取,不再有硬编码副本。</p>
+</div>
+<figure><img src="../assets/ref_vs_v7_side.jpg" alt="参考帧与 v7 同框对比"><figcaption>同框裁决:上 = Seedance 成片 f121,下 = v7 游戏渲染。拓扑全部对齐:细长白身、暗红鼻、十字橙色掠鳍(悬伸过尾)、灰尾锥。</figcaption></figure>
+<div class="grid3">
+  <figure><img src="../assets/v7_34rear.jpg" alt="v7 3/4 后视"><figcaption>v7 · 3/4 后视</figcaption></figure>
+  <figure><img src="../assets/v7_side.jpg" alt="v7 正侧"><figcaption>v7 · 正侧</figcaption></figure>
+  <figure><img src="../assets/v7_top.jpg" alt="v7 俯视"><figcaption>v7 · 俯视</figcaption></figure>
+</div>
+<div class="card warn">
+  <h3>已知残差(下一步)</h3>
+  <p>参考船尾部是<em>内凹收锥</em>的旋成体,鳍骑在收锥段上;我们的椭球尾部是凸钝尾,鳍前缘根部会没入壳体。
+  要彻底消掉这一档差距得做 SDF 级手术(椭球 → 带尾锥的雪茄剖面),会连带 <code>_as_ray</code> 解析求交、瞄准采样、法线与涂装参数化五处——单独立项。
+  表面面板纹理/做旧属于风格层,留给下游编辑 API。</p>
+</div>
+
 <footer><a href="04-inverse-recon.html">← 04 · 逆向重建</a> · REFLEX LAB</footer>
 </div>
 </body>
