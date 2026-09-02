@@ -70,6 +70,16 @@
 <p><strong>5. 基建缺口:</strong>UE6 桥没有 G-buffer 导出;UE5.7 CitySample 的 AWStreamBridge(PrePostProcessPass 视图扩展 → R32F 深度 zlib 流,带逐帧时间戳)是移植蓝本,立项后可淘汰 stop-motion。</p>
 </div>
 
+<h2>加时赛:v8.2——用户揪出的最后两层懒</h2>
+<p>用户连续两次纠偏:①"洞在深度视频里闪"——实测 DA2 基底在固定船体块上逐帧跳 3.2 灰度(单目模型无时间一致性),v7 的时序软化是<em>信号频闪</em>掩盖了事件;
+②"枪为什么是大方块"——因为我还在用图像分割+凸包去逆向一个<em>引擎本来就拥有</em>的物体。
+v8.2 配方:<strong>玩家本体沿轨迹 stop-motion 走位</strong>(tick 序列器:设姿→等3帧让枪模就位→捕获),全画面引擎真值(船/鳍/枪的L形轮廓与真实距离/准星),
+DA2 仅剩一个职责——84 帧池化的一张全局数值 LUT。稳定度 0.22 灰度/帧(逐帧匹配是 3.2),全片唯一跳变 = k=45 开火 pop。</p>
+<figure><img src="../assets/_depth_v82_strip.png" alt="v8.2控制信号"><figcaption>v8.2 控制视频:零合成件,枪是真轮廓真距离,弹孔 k=45 一帧突现。</figcaption></figure>
+<figure><img src="../assets/hole_verdict_v82.jpg" alt="v8.2判决"><figcaption>判决:v8.2(中排)的破洞 k=48/58/70 尺寸正确且逐帧压在绿圈上;k=83 火焰仍被 prompt 放大。</figcaption></figure>
+<figure><img src="../assets/_v82_prefire.png" alt="v8.2时序"><figcaption>时序终审:k=43 无洞、k=47 有洞——onset 收敛到控制信号的 k=45(v7 是 k≈25 渐入)。<strong>用户的闪烁理论被证明:稳定控制信号 → 事件准时。</strong>代价:开火前的纯真值深度无纹理,模型把光滑船体幻觉成同心圆环——外观质量与深度"纹理"耦合,三难权衡(分布/真值/稳定)之外的第四维。</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/vace_v7_shot_v82.mp4"></video><figcaption>v8.2 成片(seed 42)。</figcaption></figure>
+
 <footer><a href="07-soft-vs-hard.html">← 07 · 软硬约束终审</a> · REFLEX LAB</footer>
 </div>
 </body>
