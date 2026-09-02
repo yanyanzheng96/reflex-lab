@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>07 · 软约束 vs 硬约束:Seedance × Wan VACE 结构保留终审 — REFLEX LAB</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛰️</text></svg>">
+</head>
+<body>
+<header class="site"><div class="wrap"><h1><a href="../index.html">REFLEX <span class="orange">LAB</span></a></h1><p class="sub">运行时改造的 UE6 游戏 × 生成式视频 · 实验记录</p></div></header>
+<div class="wrap">
+<a class="nav-back" href="../index.html">← 返回目录</a>
+<h1 class="title">07 · 软约束 vs 硬约束:Seedance × Wan VACE 结构保留终审</h1>
+<p class="meta"><span class="tag">2026-09-01</span><span class="tag">reference-to-video</span><span class="tag">depth conditioning</span><span class="tag">解析IoU</span></p>
+
+<p>03/04 篇立了预言:prompt 是软约束,锁不死几何;要像素级对齐得上<em>结构硬条件</em>。
+现在输入侧的两个变量都已拨正(05 篇的引擎改型 + 06 篇的大主体与像素对齐参考图),对照实验就绪:
+同一段 v7 无枪击片段、同一张 Seedream 参考图,分别喂
+<strong>Seedance 2.0 ref2video</strong>(几何冻结 prompt,纯软约束)和
+<strong>Wan VACE 14B</strong>(task=depth,从源视频提取逐帧深度做硬条件)。</p>
+
+<div class="kpi">
+<div class="box"><div class="v">0.933</div><div class="k">Seedance 平均 IoU(时间校正后)</div></div>
+<div class="box"><div class="v">0.915</div><div class="k">VACE 平均 IoU</div></div>
+<div class="box"><div class="v">×1.207</div><div class="k">Seedance 隐性时间拉伸</div></div>
+<div class="box"><div class="v">±0帧</div><div class="k">VACE 时间对齐(match_input)</div></div>
+</div>
+
+<h2>三方同框</h2>
+<figure><img src="../assets/v7_threeway.jpg" alt="三方对比"><figcaption>上:UE 源(平涂真值)。中:Seedance(prompt 软约束,按 ×1.207 校正取帧)。下:VACE(深度硬约束,逐帧对齐)。每列同一轨迹时刻——机位、鳍角、枪位三方同步。</figcaption></figure>
+<div class="grid2">
+<figure><video controls preload="metadata" src="../assets/seedance_v7_geolock.mp4"></video><figcaption>Seedance 成片(1080p/24fps/4.04s,$~0.5)。</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/vace_v7_depth.mp4"></video><figcaption>VACE 成片(720p/25fps/3.36s,规格与输入逐位一致)。</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/overlay_v7_seedance.mp4"></video><figcaption>Seedance × 源 50% 叠加:基本单船。</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/overlay_v7_vace.mp4"></video><figcaption>VACE × 源 50% 叠加:同样单船,且无需时间校正。</figcaption></figure>
+</div>
+
+<h2>定量:逐帧解析真值 IoU</h2>
+<p>仪器沿用 06 篇终审套路:真值轮廓由 v7_clip.json 侧车<em>解析投影</em>(逐帧相机位姿+椭球+鳍+尾锥),
+生成帧用解析先验引导的 GrabCut 分割,9 个采样时刻。Seedance 的 4.04s 输出用两种时间映射各测一遍——
+均匀拉伸映射(×1.207)逐帧完胜 1:1,坐实它对参考视频做了隐性慢放。</p>
+<table>
+<thead><tr><th>时刻</th><th>Seedance(1:1)</th><th>Seedance(×1.207)</th><th>VACE(1:1)</th></tr></thead>
+<tbody>
+<tr><td>均值</td><td>0.918</td><td><strong>0.933</strong></td><td><strong>0.915</strong></td></tr>
+<tr><td>最差帧</td><td>0.900</td><td>0.910</td><td>0.896</td></tr>
+</tbody>
+</table>
+
+<div class="card law">
+<h3>结论三条</h3>
+<p><strong>1. 输入对齐 &gt; 约束机制。</strong>03 时代 Seedance 的输出是"两艘船";输入拨正后,同一个软约束端点做到 0.933——与深度硬条件(0.915)打平。
+决定成败的不是 prompt 写多狠,而是参考图与真值是否像素对齐、主体是否占满画幅。</p>
+<p><strong>2. 软约束丢的是时间轴,不是空间。</strong>Seedance 空间锁住了,却把 3.35s 隐性慢放成 4.04s(×1.207)——对纯观赏无所谓,
+对训练数据是隐患(开枪时刻等事件对不上侧车 JSON)。VACE 的 match_input 帧数/帧率逐位复刻,时间轴零漂移。</p>
+<p><strong>3. 分工定型。</strong>要电影感(1080p、光晕、氛围)用 Seedance + 事后 setpts 时间校正;要严格时空配对的训练数据用 VACE depth。
+两条路的输入侧配方相同:引擎保证几何 → 大主体渲染 → 像素对齐参考图。</p>
+</div>
+
+<p>至此 01→07 的主线闭环:游戏渲染(参数全记录)→ 编辑模型选型(定量+仪器校准)→ 生成视频(软硬双路)→ 解析真值验收。
+几何对齐从"祈祷 prompt"变成了"引擎侧工程 + 输入侧对齐 + 逐帧可验证"。</p>
+
+<footer><a href="06-bigsubject.html">← 06 · 大主体假设</a> · REFLEX LAB</footer>
+</div>
+</body>
+</html>
