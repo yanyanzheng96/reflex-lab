@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>08 · 真值深度:事件级几何的传导实验 — REFLEX LAB</title>
+<link rel="stylesheet" href="../assets/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🛰️</text></svg>">
+</head>
+<body>
+<header class="site"><div class="wrap"><h1><a href="../index.html">REFLEX <span class="orange">LAB</span></a></h1><p class="sub">运行时改造的 UE6 游戏 × 生成式视频 · 实验记录</p></div></header>
+<div class="wrap">
+<a class="nav-back" href="../index.html">← 返回目录</a>
+<h1 class="title">08 · 真值深度:事件级几何的传导实验</h1>
+<p class="meta"><span class="tag">2026-09-01</span><span class="tag">ground-truth depth</span><span class="tag">解析光线投射</span><span class="tag">同seed对照</span></p>
+
+<p><strong>起因(用户观察):</strong>枪击版 VACE 成片里,起火点和真实弹孔对不上。
+诊断:那一发用 <code>preprocess=true</code>——VACE 只对<em>服务端单目估计</em>的深度做条件,
+而估计器把船壳上 50-90px 的暗色弹孔读成了涂装,深度图里根本没有洞。结构通道缺失,模型只能按先验自选起火点。
+验证方法:自制<strong>真值深度</strong>控制视频,<code>preprocess=false</code> 直喂,同 seed=42 对照。</p>
+
+<h2>真值深度怎么来的(两次失败 + 一次绕道)</h2>
+<div class="card warn">
+<h3>引擎捕获路线的三个坑</h3>
+<p>① SceneDepth 的厘米值被 ExportRenderTarget 按 [0,1] 假设量化——全白,而且文件魔数暴露 <code>.exr</code> 文件名下写的其实是 PNG;
+② 换 DeviceDepth 时改的参数只写在"首次创建"分支里,复用的旧 rig 根本没生效(改配置要改<em>活对象</em>,不只是构造代码);
+③ stop-motion 下 CaptureScene→Export 有时序竞态,帧里叠着上一姿态的重影椭圆。</p>
+</div>
+<p>索性绕开渲染器:几何(椭球+四鳍+尾锥+弹孔胶囊)与逐帧位姿全在侧车 v7_shot_clip.json 里,
+直接 <strong>numpy 解析光线投射</strong>渲染深度——椭球二次求交、鳍薄板三角求交、尾锥圆锥求交、
+弹孔按雕刻胶囊做穿透(近壳镂空 → 映出远壳)。<em>渲染器完全不在环里,深度纯粹从参数导出。</em>
+洞在 t=1.8(第46帧)准时出现、极性正确、随相机有正确视差、零重影。</p>
+<figure><img src="../assets/v7_depthan_strip.jpg" alt="解析深度抽帧"><figcaption>解析真值深度(MiDaS 约定近亮远黑):曲率渐变、双侧鳍、弹孔暗盘(穿透看到远壳)。</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/v7_shot_depthAN.mp4"></video><figcaption>提交用的控制视频(84帧 25fps,z 范围实测 273-721cm)。</figcaption></figure>
+
+<h2>同 seed 三发对照 · 判决图</h2>
+<figure><img src="../assets/hole_verdict.jpg" alt="判决图"><figcaption>上:估计深度版(损伤位置逐帧游走——k58 火在背脊、k70 破洞跑到上左)。中:真值深度版(绿圈 = 解析弹孔投影;损伤/火光整段锚在弹孔区域,k58 火焰质心距解析弹孔 112px)。下:源片真值(白准星钉在洞心,瞄准编排零误差)。</figcaption></figure>
+<div class="grid2">
+<figure><video controls preload="metadata" src="../assets/vace_v7_shot_gtdepth.mp4"></video><figcaption>真值深度版成片。</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/overlay_v7_shot_vace.mp4"></video><figcaption>(对照)估计深度版与源片的叠加。</figcaption></figure>
+</div>
+
+<div class="card law">
+<h3>结论:事件级几何只有真值深度带得动,但深度带不动外观</h3>
+<p><strong>1. 用户的观察成立且归因明确:</strong>单目深度估计抹掉小尺度几何 → 估计深度版的起火点是模型编的。</p>
+<p><strong>2. 真值深度把事件钉回了原位:</strong>损伤/火光全程锚在真实弹孔区域(112px@k58,vs 估计版的跨半船游走)——
+弹孔的深度断崖是硬写进控制信号的,模型确实服从了。</p>
+<p><strong>3. 代价:深度通道不携带反照率。</strong>真值版的船体被渲成深蓝色、k48 还自作主张给鼻尖加了尾焰——
+只有深度+参考图撑不住外观保真。生产配方应是分层的:<em>外观找 Seedance/估计深度版,事件几何找真值深度版</em>,
+或者等支持深度+RGB 复合控制的端点。</p>
+<p><strong>4. 工程尾巴:</strong>开火帧的雕刻+重网格是重帧,真实帧率不均匀,而 mp4 按平均 fps 装配——
+帧号→回放时间的映射在事件后失准(判决图为此给两行用了各自的时间基)。下一版侧车要记逐帧墙钟时间。</p>
+</div>
+
+<p>08 收官,管线阶梯到顶:参数 → RGB → 估计深度 → <strong>解析真值深度</strong>,每一级的信息损失都被量化过。
+RGB + 真值深度 + 全参数 JSON 的三件套配对样本,从此一条命令可产。</p>
+
+<footer><a href="07-soft-vs-hard.html">← 07 · 软硬约束终审</a> · REFLEX LAB</footer>
+</div>
+</body>
+</html>
