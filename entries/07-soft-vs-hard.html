@@ -58,6 +58,21 @@
 两条路的输入侧配方相同:引擎保证几何 → 大主体渲染 → 像素对齐参考图。</p>
 </div>
 
+<h2>彩蛋:枪击版上 VACE——真实几何事件的传导</h2>
+<p>加映一场(用户 call):同轨重放 + 一次真实枪击的片段(t=8.5s 开火,bore 48 弹孔实穿船壳,侧车 v7_shot_clip.json 逐帧记录)喂给同配置的 VACE depth。
+看点:弹孔不是贴图,是雕刻出来的几何——它在深度图里,硬约束<em>必须</em>响应。</p>
+<figure><img src="../assets/v7_shot_vace_strip.jpg" alt="枪击版VACE抽帧"><figcaption>抽帧:开火前 → 开火 → 破洞出现(位置=实际雕刻点)→ 外观层把"glowing breach"逐步演绎成大火。</figcaption></figure>
+<div class="grid2">
+<figure><video controls preload="metadata" src="../assets/vace_v7_shot_depth.mp4"></video><figcaption>枪击版 VACE 成片(720p/25fps,seed=42 与无枪版同源)。</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/overlay_v7_shot_vace.mp4"></video><figcaption>与源片 50% 叠加:船体与破洞时空对位。</figcaption></figure>
+</div>
+<div class="card law">
+<h3>观察:结构层服从,外观层加戏</h3>
+<p>破洞的<em>位置与出现时刻</em>跟随深度信号(硬约束兑现);但 prompt 里的 "glowing breach venting sparks" 被外观层放大成持续增长的火球——
+深度条件管得住"哪里有洞",管不住"洞里冒多大的火"。要克制的训练数据,prompt 该写 "small dark breach, brief sparks, no fire";要电影感,现在这版就很好。
+另外:开火时刻在侧车 JSON 里精确到帧,VACE 时间轴零漂移,成片的事件帧可直接与参数对表——严格时空配对的训练样本就这么出。</p>
+</div>
+
 <p>至此 01→07 的主线闭环:游戏渲染(参数全记录)→ 编辑模型选型(定量+仪器校准)→ 生成视频(软硬双路)→ 解析真值验收。
 几何对齐从"祈祷 prompt"变成了"引擎侧工程 + 输入侧对齐 + 逐帧可验证"。</p>
 
