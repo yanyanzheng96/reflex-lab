@@ -80,6 +80,27 @@ DA2 仅剩一个职责——84 帧池化的一张全局数值 LUT。稳定度 0.
 <figure><img src="../assets/_v82_prefire.png" alt="v8.2时序"><figcaption>时序终审:k=43 无洞、k=47 有洞——onset 收敛到控制信号的 k=45(v7 是 k≈25 渐入)。<strong>用户的闪烁理论被证明:稳定控制信号 → 事件准时。</strong>代价:开火前的纯真值深度无纹理,模型把光滑船体幻觉成同心圆环——外观质量与深度"纹理"耦合,三难权衡(分布/真值/稳定)之外的第四维。</figcaption></figure>
 <figure><video controls preload="metadata" src="../assets/vace_v7_shot_v82.mp4"></video><figcaption>v8.2 成片(seed 42)。</figcaption></figure>
 
+<h2>终章:标注器身份战役与 v15 定稿</h2>
+<p>v8.2 之后战线又推进了七个版本,浓缩记录:</p>
+<div class="card warn">
+<h3>三个连环误判(均由用户抓出)</h3>
+<p>①外观崩坏被我归因"深度无纹理",用户指出是<strong>分布错配</strong>;②我锚定 DepthAnything V2 做参照(fal 的 DA2 端点实测与本地一致),
+用户坚持"直喂标注器原味试试"——对照实验揭示<strong>DA2 原味直喂也塌黑腔</strong>;③最后一步"连官网":官方任务注册表白纸黑字
+<code>task 'depth' → MiDaS dpt_hybrid</code>,<code>task 'depthv2' → DA V2 vitl</code>,而 <strong>fal 只暴露了 'depth'——服务端惯例从来是 MiDaS</strong>。
+MiDaS 直喂复现实验确认:成片≈服务端标注版。三方互证闭合。</p></div>
+<div class="card warn">
+<h3>蒸馏路线的天花板</h3>
+<p>试图把 MiDaS 蒸馏成确定性模型(f(n·v) 曲线、g(n·v,y) 二维表)全部只能拟到池化均值(121 vs 单帧 161)——
+MiDaS 的逐帧 minmax 归一让船体亮度本身逐帧漂移,这不是噪声是本性,而模型就是在这种本性上训练的。<strong>顺着标注器的本性,别逆着蒸馏。</strong></p></div>
+<figure><img src="../assets/_depth_v15_strip.png" alt="v15控制信号"><figcaption>v15 控制信号:84 帧 MiDaS 原味 + 唯一干预 = 真值弹孔注入(k=45 门控,局部 −50)。</figcaption></figure>
+<figure><img src="../assets/_v15_verdict.jpg" alt="v15判决"><figcaption>终审判决:上 v7(DA2 基底)k=30 已塌暗腔;中 <strong>v15</strong>——开火前完好亮壳、k=47 破洞准时准位出现、损伤局部化;下 无洞对照——k=58 才在错误位置开裂。</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/vace_v7_shot_v15.mp4"></video><figcaption>v15 成片(seed 42,系列第⑪发)。</figcaption></figure>
+<div class="card law">
+<h3>深度控制信号最终定理(15 个版本换来的一句话)</h3>
+<p><strong>找对标注器,用它的原味,只注入它看不见的真值事件。</strong>
+分布对齐不是直方图匹配(区域语义≠全局分布形状),不是蒸馏(逆本性),而是"确认服务端惯例 + 原样使用 + 最小干预"。
+配方:官方源查任务→标注器映射 → 标注器原味逐帧输出为基底 → 引擎真值只补事件几何(时序门控+局部偏移+羽化)。</p></div>
+
 <footer><a href="07-soft-vs-hard.html">← 07 · 软硬约束终审</a> · REFLEX LAB</footer>
 </div>
 </body>
