@@ -33,27 +33,42 @@
 <figure><img src="../assets/v7_depthan_strip.jpg" alt="解析深度抽帧"><figcaption>解析真值深度(MiDaS 约定近亮远黑):曲率渐变、双侧鳍、弹孔暗盘(穿透看到远壳)。</figcaption></figure>
 <figure><video controls preload="metadata" src="../assets/v7_shot_depthAN.mp4"></video><figcaption>提交用的控制视频(84帧 25fps,z 范围实测 273-721cm)。</figcaption></figure>
 
-<h2>同 seed 三发对照 · 判决图</h2>
-<figure><img src="../assets/hole_verdict.jpg" alt="判决图"><figcaption>上:估计深度版(损伤位置逐帧游走——k58 火在背脊、k70 破洞跑到上左)。中:真值深度版(绿圈 = 解析弹孔投影;损伤/火光整段锚在弹孔区域,k58 火焰质心距解析弹孔 112px)。下:源片真值(白准星钉在洞心,瞄准编排零误差)。</figcaption></figure>
-<div class="grid2">
-<figure><video controls preload="metadata" src="../assets/vace_v7_shot_gtdepth.mp4"></video><figcaption>真值深度版成片。</figcaption></figure>
-<figure><video controls preload="metadata" src="../assets/overlay_v7_shot_vace.mp4"></video><figcaption>(对照)估计深度版与源片的叠加。</figcaption></figure>
-</div>
+<h2>第一次 GT 提交:失败,且被用户识破</h2>
+<p>手搓归一化的解析深度直喂 VACE,输出船体变深蓝、鼻尖凭空喷焰——我最初归因为"深度带不动外观",<strong>用户指出真正问题:UE 出的深度和 VACE 期望的深度分布根本不一样</strong>。由此展开一场三天里最深的联合 debug。</p>
+
+<h2>联合 debug 编年史(四个根因)</h2>
+<div class="card warn">
+<h3>① 引擎导出链把深度压成 8-bit</h3>
+<p>审计发现"UE 真值"PNG 全图只有 5-8 个唯一值(50-100cm 一个台阶)——此前被误诊为"stop-motion 重影"的双椭圆,实为<strong>量化梯田</strong>。
+根因:<code>CreateRenderTarget2D</code> 的 format=4 在 UE 枚举里是 R16f 而非 RGBA16f,EXR 浮点导出路径从未触发。
+修复组合:<strong>RGBA16f(6) + SceneDepth(4) → 真 EXR</strong>,厘米级浮点(pip OpenEXR 读取)。</p></div>
+<figure><img src="../assets/_audit_diff_k58.png" alt="审计diff"><figcaption>修复后逐像素对账:解析投影 vs 真 UE 深度,船体中位差 2cm;分歧集中在弹孔(胶囊近似 vs 真 MC 洞壁,最大 281cm)、薄鳍、半胞元轮廓边。</figcaption></figure>
+<div class="card warn">
+<h3>② MiDaS ≠ DepthAnything V2</h3>
+<p>本地跑通 DA2 真身后发现:同一帧船体带 MiDaS ~169 vs DA2 ~95,近 2 倍——第一版分位数校准锚错了参照系。VACE 源码里 V2 标注器就是 DepthAnything。</p></div>
+<figure><img src="../assets/_da2_vs_v5.png" alt="DA2 vs v5"><figcaption>换 DA2 为参照后的直方图匹配(v5):分布逐帧原生,真值弹孔保留为"值域内的暗盘"。</figcaption></figure>
+<div class="card law">
+<h3>③ 标注器是外观的函数,不是深度的函数</h3>
+<p>响应曲线实测非单调:船体侧缘(z≈520cm)被打到接近背景(灰度 9-17),而更远的洞远壁(z=705cm)反而 83;弹孔的 300cm 真实断崖在 DA2 里只剩 <strong>15 灰度的凹陷</strong>——这就是估计深度版起火点游走的信号学根源。</p></div>
+<div class="card law">
+<h3>④ 最终配方(用户设计):DA2 基底 + 真值只注入事件</h3>
+<p>DA2 全场当基底(主体/枪/背景 100% 原生分布,枪由 DA2 自己提供,无需任何合成件);
+真·UE 浮点深度只注入弹孔区域(判定:实测深度比理想椭球前表面深 80cm+),秩匹配进当帧 DA2 值域,σ3 羽化,并按开火帧 k=45 时序门控。</p></div>
+<figure><img src="../assets/_da2_vs_v7.png" alt="v7控制信号"><figcaption>v7 控制视频:左 DA2 基底,右 = 基底 + 真值洞(仅开火后帧)。</figcaption></figure>
+
+<h2>终审:同 seed 四发对照</h2>
+<figure><img src="../assets/hole_verdict_v7.jpg" alt="v7判决图"><figcaption>绿圈 = 解析弹孔投影。上:估计深度版——损伤逐帧游走(4 帧仅 1 帧碰巧压圈)。中:v7——<strong>损伤四帧全部锚在真实弹孔上</strong>。下:源片真值。</figcaption></figure>
+<figure><video controls preload="metadata" src="../assets/vace_v7_shot_v7depth.mp4"></video><figcaption>v7 成片(seed 42,与全系对照同源)。</figcaption></figure>
+<figure><img src="../assets/_v7_prefire.png" alt="时序检查"><figcaption>时序检查:k=15 干净,k=30(开火前 0.6s)破洞已渐入——扩散模型对逐帧几何服从、对事件突变时刻不服从,宁可让洞平滑长出也不接受一帧突现。</figcaption></figure>
 
 <div class="card law">
-<h3>结论:事件级几何只有真值深度带得动,但深度带不动外观</h3>
-<p><strong>1. 用户的观察成立且归因明确:</strong>单目深度估计抹掉小尺度几何 → 估计深度版的起火点是模型编的。</p>
-<p><strong>2. 真值深度把事件钉回了原位:</strong>损伤/火光全程锚在真实弹孔区域(112px@k58,vs 估计版的跨半船游走)——
-弹孔的深度断崖是硬写进控制信号的,模型确实服从了。</p>
-<p><strong>3. 代价:深度通道不携带反照率。</strong>真值版的船体被渲成深蓝色、k48 还自作主张给鼻尖加了尾焰——
-只有深度+参考图撑不住外观保真。生产配方应是分层的:<em>外观找 Seedance/估计深度版,事件几何找真值深度版</em>,
-或者等支持深度+RGB 复合控制的端点。</p>
-<p><strong>4. 工程尾巴:</strong>开火帧的雕刻+重网格是重帧,真实帧率不均匀,而 mp4 按平均 fps 装配——
-帧号→回放时间的映射在事件后失准(判决图为此给两行用了各自的时间基)。下一版侧车要记逐帧墙钟时间。</p>
+<h3>08 最终结论</h3>
+<p><strong>1. 空间事件锚定:成立。</strong>分布原生 + 事件真值的控制信号让损伤四帧全部钉在真实弹孔上(估计深度版 1/4 碰巧)。</p>
+<p><strong>2. 时序锚定:软性。</strong>洞在控制信号里 k=45 突现,模型让它从 ~k25 渐入——时间维度上视频先验强于逐帧控制。</p>
+<p><strong>3. 尺寸被外观层放大。</strong>prompt 的"torn opening / interior"戏剧化语言把 130px 的洞演成半船撕裂;训练数据版应写克制 prompt。</p>
+<p><strong>4. 方法论:分布要原生,事件要真值,缺一不可</strong>——③号失败(纯真值、分布外)与①②号失败(纯原生、无事件信号)从两侧证明了这一点。这个配方由用户的三次纠偏逼出:"别拼接,查源码"、"锚错参照系了"、"UE 深度本身有问题"。</p>
+<p><strong>5. 基建缺口:</strong>UE6 桥没有 G-buffer 导出;UE5.7 CitySample 的 AWStreamBridge(PrePostProcessPass 视图扩展 → R32F 深度 zlib 流,带逐帧时间戳)是移植蓝本,立项后可淘汰 stop-motion。</p>
 </div>
-
-<p>08 收官,管线阶梯到顶:参数 → RGB → 估计深度 → <strong>解析真值深度</strong>,每一级的信息损失都被量化过。
-RGB + 真值深度 + 全参数 JSON 的三件套配对样本,从此一条命令可产。</p>
 
 <footer><a href="07-soft-vs-hard.html">← 07 · 软硬约束终审</a> · REFLEX LAB</footer>
 </div>
